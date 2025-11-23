@@ -252,6 +252,19 @@ services:
     #           count: 1
     #           capabilities: [gpu]
 
+  chord-recognition:
+    build:
+      context: .
+      dockerfile: services/chord-recognition/Dockerfile
+    container_name: rt-chord-recognition
+    environment:
+      SERVICE_NAME: chord-recognition
+      LOG_LEVEL: INFO
+    ports:
+      - "8003:8003"
+    depends_on:
+      - minio
+
   # Monitoring (Optional - uncomment to enable)
 
   # prometheus:

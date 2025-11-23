@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Chord Recognition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f9fafb;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: #ede9fe;
+            border-color: #7c3aed;
+        }
+
+        .upload-area.dragging {
+            background: #ddd6fe;
+            border-color: #7c3aed;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .sheet-music {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 30px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            line-height: 2;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .note-card {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .note-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .note-info {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .chord-timeline {
+            margin-top: 30px;
+        }
+
+        .chord-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 12px;
+            background: #f3f4f6;
+            border-radius: 6px;
+        }
+
+        .chord-name {
+            font-weight: 700;
+            color: #1f2937;
+            min-width: 80px;
+        }
+
+        .chord-time {
+            color: #6b7280;
+            font-size: 14px;
+            margin-left: auto;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .audio-player {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .audio-player audio {
+            width: 100%;
+        }
+
+        .piano-keys {
+            display: flex;
+            gap: 2px;
+            padding: 20px;
+            background: #1f2937;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .key {
+            min-width: 40px;
+            height: 150px;
+            background: white;
+            border: 2px solid #374151;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-weight: 600;
+            color: #1f2937;
+            transition: all 0.3s;
+        }
+
+        .key.black {
+            background: #1f2937;
+            color: white;
+            height: 100px;
+            margin: 0 -22px;
+            z-index: 1;
+        }
+
+        .key.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .key.black.active {
+            background: #7c3aed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 Piano Chord Recognition</h1>
+        <p class="subtitle">Upload music and extract piano chords & notes</p>
+
+        <div class="card">
+            <h2>Upload Music</h2>
+
+            <div class="alert alert-info">
+                <strong>Supported formats:</strong> MP3, WAV, FLAC, OGG, M4A
+            </div>
+
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('audioFile').click()">
+                <div class="upload-icon">🎵</div>
+                <h3>Click to upload or drag and drop</h3>
+                <p style="color: #6b7280; margin-top: 10px;">Upload your music file to extract chords</p>
+                <input type="file" id="audioFile" accept="audio/*">
+            </div>
+
+            <div id="fileInfo" class="hidden" style="margin-top: 20px;">
+                <p><strong>Selected file:</strong> <span id="fileName"></span></p>
+                <p><strong>Size:</strong> <span id="fileSize"></span></p>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn-primary" id="analyzeBtn" onclick="analyzeMusic()" disabled>
+                    Analyze Music
+                </button>
+            </div>
+
+            <div id="processingStatus" class="hidden"></div>
+        </div>
+
+        <!-- Audio Player -->
+        <div id="audioPlayerCard" class="card hidden">
+            <h2>Audio Player</h2>
+            <div class="audio-player">
+                <audio id="audioPlayer" controls></audio>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="resultsCard" class="card hidden">
+            <h2>Analysis Results</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Duration</div>
+                    <div class="stat-value" id="duration">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Tempo (BPM)</div>
+                    <div class="stat-value" id="tempo">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Key</div>
+                    <div class="stat-value" id="key">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Time Signature</div>
+                    <div class="stat-value" id="timeSignature">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Notes Detected</div>
+                    <div class="stat-value" id="notesCount">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Chords Detected</div>
+                    <div class="stat-value" id="chordsCount">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sheet Music -->
+        <div id="sheetMusicCard" class="card hidden">
+            <h2>Piano Sheet Music</h2>
+            <div class="sheet-music" id="sheetMusic"></div>
+            <button class="btn-success" style="margin-top: 15px;" onclick="copySheetMusic()">
+                Copy to Clipboard
+            </button>
+        </div>
+
+        <!-- Chord Progression -->
+        <div id="chordsCard" class="card hidden">
+            <h2>Chord Progression</h2>
+            <div class="chord-timeline" id="chordTimeline"></div>
+        </div>
+
+        <!-- Notes Timeline -->
+        <div id="notesCard" class="card hidden">
+            <h2>Detected Notes</h2>
+            <div class="notes-grid" id="notesGrid"></div>
+        </div>
+    </div>
+
+    <script src="chord-recognition.js"></script>
+</body>
+</html>
