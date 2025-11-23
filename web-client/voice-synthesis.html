@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Synthesis - AI Voice Cloning</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .profile-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .profile-card {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .profile-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .profile-card.selected {
+            border-color: #667eea;
+            background: #ede9fe;
+        }
+
+        .profile-name {
+            font-weight: 700;
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .profile-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .profile-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .consent-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .consent-verified {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .consent-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .profile-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .profile-actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        .audio-player {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .audio-player audio {
+            width: 100%;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Voice Synthesis</h1>
+        <p class="subtitle">Clone and synthesize voices with AI</p>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('create')">Create Voice Profile</button>
+                <button class="tab" onclick="switchTab('synthesize')">Synthesize Speech</button>
+                <button class="tab" onclick="switchTab('manage')">Manage Profiles</button>
+            </div>
+
+            <!-- Create Voice Profile Tab -->
+            <div id="create-tab" class="tab-content active">
+                <h2>Create Voice Profile</h2>
+
+                <div class="alert alert-info">
+                    <strong>Info:</strong> Record or upload a 5-20 second audio sample of the voice you want to clone. Speak clearly and naturally.
+                </div>
+
+                <div class="form-group">
+                    <label for="userId">User ID:</label>
+                    <input type="text" id="userId" placeholder="Your user ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="profileName">Profile Name:</label>
+                    <input type="text" id="profileName" placeholder="e.g., My Voice, John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label for="profileDescription">Description (optional):</label>
+                    <textarea id="profileDescription" placeholder="Describe this voice profile..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="audioFile">Audio Sample:</label>
+                    <input type="file" id="audioFile" accept="audio/*">
+                </div>
+
+                <button class="btn-primary" onclick="createVoiceProfile()">Create Voice Profile</button>
+
+                <div id="createResult" class="hidden"></div>
+            </div>
+
+            <!-- Synthesize Speech Tab -->
+            <div id="synthesize-tab" class="tab-content">
+                <h2>Synthesize Speech</h2>
+
+                <div class="alert alert-warning">
+                    <strong>Consent Required:</strong> You can only synthesize speech using profiles with verified consent.
+                </div>
+
+                <div class="form-group">
+                    <label for="speakerSelect">Select Voice Profile:</label>
+                    <select id="speakerSelect">
+                        <option value="">-- Select a voice profile --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="synthesisText">Text to Speak:</label>
+                    <textarea id="synthesisText" placeholder="Enter the text you want to synthesize...">Hello, this is a demonstration of AI voice synthesis using a cloned voice. The technology can create natural-sounding speech in real-time.</textarea>
+                </div>
+
+                <div class="config-grid">
+                    <div class="form-group">
+                        <label for="synthesisLanguage">Language:</label>
+                        <select id="synthesisLanguage">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn-success" onclick="synthesizeSpeech()">Generate Speech</button>
+
+                <div id="synthesisResult" class="hidden"></div>
+
+                <div id="audioPlayerContainer" class="hidden audio-player">
+                    <h3>Generated Audio:</h3>
+                    <audio id="audioPlayer" controls></audio>
+                    <button class="btn-secondary" style="margin-top: 10px;" onclick="downloadAudio()">Download Audio</button>
+                </div>
+            </div>
+
+            <!-- Manage Profiles Tab -->
+            <div id="manage-tab" class="tab-content">
+                <h2>Manage Voice Profiles</h2>
+
+                <div class="form-group">
+                    <label for="manageUserId">Filter by User ID:</label>
+                    <input type="text" id="manageUserId" placeholder="Enter user ID">
+                </div>
+
+                <button class="btn-primary" onclick="loadProfiles()">Load Profiles</button>
+
+                <div id="profileList" class="profile-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="voice-synthesis.js"></script>
+</body>
+</html>
