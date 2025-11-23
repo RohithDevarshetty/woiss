@@ -1,0 +1,254 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+
+  postgres:
+    image: postgres:15
+    container_name: rt-postgres
+    environment:
+      POSTGRES_DB: realtime_transcribe
+      POSTGRES_USER: transcribe
+      POSTGRES_PASSWORD: transcribe
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transcribe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: rt-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rt-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: rt-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"  # Console UI
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Application Services
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: rt-gateway
+    environment:
+      DATABASE_URL: postgresql://transcribe:transcribe@postgres:5432/realtime_transcribe
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SERVICE_NAME: gateway
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: rt-api
+    environment:
+      DATABASE_URL: postgresql://transcribe:transcribe@postgres:5432/realtime_transcribe
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SERVICE_NAME: api
+      LOG_LEVEL: INFO
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: services/ingestion/Dockerfile
+    container_name: rt-ingestion
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      STORAGE_BUCKET_AUDIO: audio-recordings
+      SERVICE_NAME: ingestion
+      LOG_LEVEL: INFO
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  asr:
+    build:
+      context: .
+      dockerfile: services/asr/Dockerfile
+    container_name: rt-asr
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WHISPER_MODEL: large-v3
+      DEVICE: cpu  # Change to 'cuda' if GPU available
+      COMPUTE_TYPE: float32  # Use float16 with GPU
+      MODEL_CACHE_DIR: /models
+      SERVICE_NAME: asr
+      LOG_LEVEL: INFO
+    volumes:
+      - asr-models:/models
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  diarization:
+    build:
+      context: .
+      dockerfile: services/diarization/Dockerfile
+    container_name: rt-diarization
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DEVICE: cpu  # Change to 'cuda' if GPU available
+      HF_AUTH_TOKEN: ${HF_AUTH_TOKEN}  # Set in .env file
+      SERVICE_NAME: diarization
+      LOG_LEVEL: INFO
+    volumes:
+      - diarization-models:/root/.cache
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  postprocessing:
+    build:
+      context: .
+      dockerfile: services/postprocessing/Dockerfile
+    container_name: rt-postprocessing
+    environment:
+      DATABASE_URL: postgresql://transcribe:transcribe@postgres:5432/realtime_transcribe
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SERVICE_NAME: postprocessing
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Monitoring (Optional - uncomment to enable)
+
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: rt-prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus-data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: rt-grafana
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     GF_SECURITY_ADMIN_PASSWORD: admin
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  minio-data:
+  asr-models:
+  diarization-models:
+  # prometheus-data:
+  # grafana-data:
+
+networks:
+  default:
+    name: realtime-transcribe-network
