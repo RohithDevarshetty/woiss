@@ -20,9 +20,9 @@ sleep 10
 echo "Starting application services..."
 docker-compose up -d gateway api ingestion postprocessing
 
-# Start ML services (ASR, Diarization, Voice Imitation)
+# Start ML services (ASR, Diarization, Voice Imitation, Chord Recognition)
 echo "Starting ML services (this may take a while on first run)..."
-docker-compose up -d asr diarization voice-imitation
+docker-compose up -d asr diarization voice-imitation chord-recognition
 
 echo ""
 echo "✅ All services started!"
@@ -34,8 +34,10 @@ echo "Services:"
 echo "  - Gateway (WebSocket): ws://localhost:8000"
 echo "  - API (REST): http://localhost:8001"
 echo "  - Voice Imitation API: http://localhost:8002"
+echo "  - Chord Recognition API: http://localhost:8003"
 echo "  - Web Client (Transcription): file://$(pwd)/web-client/index.html"
 echo "  - Web Client (Voice Synthesis): file://$(pwd)/web-client/voice-synthesis.html"
+echo "  - Web Client (Chord Recognition): file://$(pwd)/web-client/chord-recognition.html"
 echo ""
 echo "Management UIs:"
 echo "  - RabbitMQ: http://localhost:15672 (guest/guest)"
